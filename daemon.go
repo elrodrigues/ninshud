@@ -25,12 +25,6 @@ Signals:
 var (
 	stop = make(chan struct{})
 	done = make(chan struct{})
-	// test_cred = syscall.Credential{
-	// 	Uid:         1000,
-	// 	Gid:         1000,
-	// 	Groups:      []uint32{1000, 998, 991, 3, 90, 98, 961},
-	// 	NoSetGroups: false,
-	// }
 )
 
 // This function handles SIGTERM and SIGQUIT signals to the
@@ -66,7 +60,7 @@ func main() {
 	if len(daemon.ActiveFlags()) > 0 {
 		process, err := context.Search()
 		if err != nil {
-			log.Fatalf("Unable to send signal. Is the daemon running? %s\n", err.Error())
+			log.Fatalf("Unable to send signal. Is the daemon running?\n%s\n", err.Error())
 		}
 		daemon.SendCommands(process)
 		return
