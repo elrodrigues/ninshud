@@ -1,15 +1,22 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
+	"net"
 	"os"
 	"syscall"
-	"time"
+
+	// "time"
 
 	// "github.com/hashicorp/memberlist"
+	pb "github.com/elrodrigues/ninshud/jutsu"
 	"github.com/sevlyar/go-daemon"
+	"google.golang.org/grpc"
+	// "github.com/golang/protobuf/proto"
+	// "github.com/elrodrigues/ninshud/clientRPC"
 )
 
 const (
@@ -18,21 +25,36 @@ const (
 	signal_msg  = `Sends signal to Ninshu daemon.
 Signals:
 	stop - stops the Ninshu daemon
-
+	ping - test and stop Ninshu daemon
 `
 )
 
 var (
-	stop = make(chan struct{})
-	done = make(chan struct{})
+	done              = make(chan struct{})
+	port              = flag.Int("p", 47001, `Daemon's port number. Default is 47001`)
+	s    *grpc.Server = nil
 )
+
+type clusterServices struct {
+	pb.UnimplementedClusterServer
+}
+
+func (s *clusterServices) PingNode(ctx context.Context, in *pb.HelloRequest) (*pb.HelloReply, error) {
+	log.Printf("Received ping: %v", in.GetPing())
+	return &pb.HelloReply{Pong: "Hello " + in.GetPing()}, nil
+}
 
 // This function handles SIGTERM and SIGQUIT signals to the
 // daemon. os.Signal is an interface implemented in the OS'
 // version of Go. This uses Unix's syscall implementation.
 func sigTermHandler(signal os.Signal) error {
 	log.Println("terminating ninshu daemon...")
-	stop <- struct{}{}
+	// stop <- struct{}{}
+	if s == nil {
+		log.Println("child process has not started server!")
+		return nil
+	}
+	s.GracefulStop()
 	if signal == syscall.SIGQUIT {
 		<-done
 	}
@@ -82,27 +104,27 @@ func main() {
 	log.Println("- - - - - - - - - - -")
 	log.Println("Ninshu Daemon Started")
 	// Setup goes here
-	// Spawn worker
+	// Spawn workers
 	go worker()
 
 	err = daemon.ServeSignals() // blocks?
 	if err != nil {
-		log.Printf("SeveSignals error: %s", err.Error())
+		log.Printf("ServeSignals error: %s", err.Error())
 	}
 	log.Println("Ninshu Daemon Stopped")
 }
 
-// Demo Worker
+// gRPC Worker
 func worker() {
-LOOP:
-	for { // loop until SIGTERM received
-		log.Println("+", time.Now().Unix())
-		time.Sleep(time.Second)
-		select {
-		case <-stop:
-			break LOOP
-		default:
-		}
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", *port))
+	if err != nil {
+		log.Fatalf("failed to listen at %d: %v", *port, err)
+	}
+	s = grpc.NewServer()
+	pb.RegisterClusterServer(s, &clusterServices{})
+	log.Printf("server listening at %v\n", lis.Addr())
+	if err = s.Serve(lis); err != nil {
+		log.Fatalf("failed to serve: %v", err)
 	}
 	done <- struct{}{}
 }

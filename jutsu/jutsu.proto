@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+option go_package = "github.com/elrodrigues/ninshud/jutsu";
+
+package jutsu;
+
+// Interface for daemon
+service Cluster {
+    // Pings a node
+    rpc PingNode (HelloRequest) returns (HelloReply) {}
+}
+
+message HelloRequest {
+    string ping = 1;
+}
+
+message HelloReply {
+    string pong = 1;
+}
