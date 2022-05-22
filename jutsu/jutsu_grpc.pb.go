@@ -20,7 +20,7 @@ const _ = grpc.SupportPackageIsVersion7
 type ClusterClient interface {
 	// Pings a node
 	PingNode(ctx context.Context, in *HelloRequest, opts ...grpc.CallOption) (*HelloReply, error)
-	DropAnchor(ctx context.Context, in *EmptyRequest, opts ...grpc.CallOption) (*NinshuReply, error)
+	DropAnchor(ctx context.Context, in *ConnectRequest, opts ...grpc.CallOption) (*NinshuReply, error)
 	RaiseAnchor(ctx context.Context, in *EmptyRequest, opts ...grpc.CallOption) (*NinshuReply, error)
 	ConnectTo(ctx context.Context, in *ConnectRequest, opts ...grpc.CallOption) (*NinshuReply, error)
 }
@@ -42,7 +42,7 @@ func (c *clusterClient) PingNode(ctx context.Context, in *HelloRequest, opts ...
 	return out, nil
 }
 
-func (c *clusterClient) DropAnchor(ctx context.Context, in *EmptyRequest, opts ...grpc.CallOption) (*NinshuReply, error) {
+func (c *clusterClient) DropAnchor(ctx context.Context, in *ConnectRequest, opts ...grpc.CallOption) (*NinshuReply, error) {
 	out := new(NinshuReply)
 	err := c.cc.Invoke(ctx, "/jutsu.Cluster/DropAnchor", in, out, opts...)
 	if err != nil {
@@ -75,7 +75,7 @@ func (c *clusterClient) ConnectTo(ctx context.Context, in *ConnectRequest, opts 
 type ClusterServer interface {
 	// Pings a node
 	PingNode(context.Context, *HelloRequest) (*HelloReply, error)
-	DropAnchor(context.Context, *EmptyRequest) (*NinshuReply, error)
+	DropAnchor(context.Context, *ConnectRequest) (*NinshuReply, error)
 	RaiseAnchor(context.Context, *EmptyRequest) (*NinshuReply, error)
 	ConnectTo(context.Context, *ConnectRequest) (*NinshuReply, error)
 	mustEmbedUnimplementedClusterServer()
@@ -88,7 +88,7 @@ type UnimplementedClusterServer struct {
 func (UnimplementedClusterServer) PingNode(context.Context, *HelloRequest) (*HelloReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method PingNode not implemented")
 }
-func (UnimplementedClusterServer) DropAnchor(context.Context, *EmptyRequest) (*NinshuReply, error) {
+func (UnimplementedClusterServer) DropAnchor(context.Context, *ConnectRequest) (*NinshuReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DropAnchor not implemented")
 }
 func (UnimplementedClusterServer) RaiseAnchor(context.Context, *EmptyRequest) (*NinshuReply, error) {
@@ -129,7 +129,7 @@ func _Cluster_PingNode_Handler(srv interface{}, ctx context.Context, dec func(in
 }
 
 func _Cluster_DropAnchor_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(EmptyRequest)
+	in := new(ConnectRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -141,7 +141,7 @@ func _Cluster_DropAnchor_Handler(srv interface{}, ctx context.Context, dec func(
 		FullMethod: "/jutsu.Cluster/DropAnchor",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClusterServer).DropAnchor(ctx, req.(*EmptyRequest))
+		return srv.(ClusterServer).DropAnchor(ctx, req.(*ConnectRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }

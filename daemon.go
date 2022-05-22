@@ -44,12 +44,12 @@ func (s *clusterServices) PingNode(ctx context.Context, in *pb.HelloRequest) (*p
 	return &pb.HelloReply{Pong: "Hello " + in.GetPing()}, nil
 }
 
-func (s *clusterServices) DropAnchor(ctx context.Context, in *pb.EmptyRequest) (*pb.NinshuReply, error) {
+func (s *clusterServices) DropAnchor(ctx context.Context, in *pb.ConnectRequest) (*pb.NinshuReply, error) {
 	if list == nil {
 		log.Println("dropping anchor...")
 		// default port 7946, bound to all interfaces
 		config := memberlist.DefaultLANConfig()
-		config.AdvertiseAddr = string("0.0.0.0")
+		config.AdvertiseAddr = in.GetHostIP()
 		log.Printf("using %s\n", config.AdvertiseAddr)
 		mlist, err := memberlist.Create(config)
 		if err != nil {
@@ -85,7 +85,7 @@ func (s *clusterServices) ConnectTo(ctx context.Context, in *pb.ConnectRequest) 
 		log.Println("connecting to anchor...")
 		// default port 7946, bound to all interfaces
 		config := memberlist.DefaultLANConfig()
-		config.AdvertiseAddr = "0.0.0.0"
+		config.AdvertiseAddr = in.GetHostIP()
 		log.Printf("using %s\n", config.AdvertiseAddr)
 		mlist, err := memberlist.Create(config)
 		if err != nil {
@@ -93,7 +93,7 @@ func (s *clusterServices) ConnectTo(ctx context.Context, in *pb.ConnectRequest) 
 			return &pb.NinshuReply{Success: false}, err
 		}
 		list = mlist
-		n, err := list.Join([]string{in.Ip})
+		n, err := list.Join([]string{in.GetIp()})
 		if err != nil {
 			log.Printf("failed to connect to anchor: %v", err)
 			return &pb.NinshuReply{Success: false}, err
