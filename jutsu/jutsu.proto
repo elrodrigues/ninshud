@@ -8,6 +8,16 @@ package jutsu;
 service Cluster {
     // Pings a node
     rpc PingNode (HelloRequest) returns (HelloReply) {}
+    rpc DropAnchor (EmptyRequest) returns (NinshuReply) {} // replace with anchor type
+    rpc RaiseAnchor (EmptyRequest) returns (NinshuReply) {}
+    rpc ConnectTo (ConnectRequest) returns (NinshuReply) {}
+}
+
+message EmptyRequest {}
+
+message NinshuReply {
+    bool success = 1;
+    optional string reply = 2;
 }
 
 message HelloRequest {
@@ -16,4 +26,8 @@ message HelloRequest {
 
 message HelloReply {
     string pong = 1;
+}
+
+message ConnectRequest {
+    string ip = 1;
 }

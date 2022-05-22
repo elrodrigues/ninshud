@@ -8,15 +8,13 @@ import (
 	"net"
 	"os"
 	"syscall"
+	"time"
 
-	// "time"
-
-	// "github.com/hashicorp/memberlist"
 	pb "github.com/elrodrigues/ninshud/jutsu"
+	"github.com/hashicorp/memberlist"
 	"github.com/sevlyar/go-daemon"
 	"google.golang.org/grpc"
 	// "github.com/golang/protobuf/proto"
-	// "github.com/elrodrigues/ninshud/clientRPC"
 )
 
 const (
@@ -24,15 +22,17 @@ const (
 	logFileName = "ninshud.log"
 	signal_msg  = `Sends signal to Ninshu daemon.
 Signals:
-	stop - stops the Ninshu daemon
-	ping - test and stop Ninshu daemon
+	stop  - gracefully stops the Ninshu daemon
+	force - forces Ninshu daemon to stop
 `
 )
 
 var (
-	done              = make(chan struct{})
-	port              = flag.Int("p", 47001, `Daemon's port number. Default is 47001`)
-	s    *grpc.Server = nil
+	done                                 = make(chan struct{})
+	port                                 = flag.Int("p", 47001, `Daemon's port number.`)
+	s             *grpc.Server           = nil
+	list          *memberlist.Memberlist = nil
+	listAvailable                        = false
 )
 
 type clusterServices struct {
@@ -42,6 +42,68 @@ type clusterServices struct {
 func (s *clusterServices) PingNode(ctx context.Context, in *pb.HelloRequest) (*pb.HelloReply, error) {
 	log.Printf("Received ping: %v", in.GetPing())
 	return &pb.HelloReply{Pong: "Hello " + in.GetPing()}, nil
+}
+
+func (s *clusterServices) DropAnchor(ctx context.Context, in *pb.EmptyRequest) (*pb.NinshuReply, error) {
+	if list == nil {
+		log.Println("dropping anchor...")
+		// default port 7946, bound to all interfaces
+		config := memberlist.DefaultLANConfig()
+		config.AdvertiseAddr = string("0.0.0.0")
+		log.Printf("using %s\n", config.AdvertiseAddr)
+		mlist, err := memberlist.Create(config)
+		if err != nil {
+			log.Printf("failed to create memberlist: %v", err)
+			return &pb.NinshuReply{Success: false}, err
+		}
+		list = mlist
+		listAvailable = true
+		return &pb.NinshuReply{Success: true}, nil
+	} else {
+		return &pb.NinshuReply{Success: false}, nil
+	}
+}
+
+func (s *clusterServices) RaiseAnchor(ctx context.Context, in *pb.EmptyRequest) (*pb.NinshuReply, error) {
+	if list != nil {
+		listAvailable = false
+		log.Println("lifting anchor...")
+		list.Leave(time.Second)
+		if err := list.Shutdown(); err != nil {
+			log.Println("!!! failed to leave Ninshu network !!!")
+			return &pb.NinshuReply{Success: false}, err
+		}
+		list = nil
+		return &pb.NinshuReply{Success: true}, nil
+	} else {
+		return &pb.NinshuReply{Success: false}, nil
+	}
+}
+
+func (s *clusterServices) ConnectTo(ctx context.Context, in *pb.ConnectRequest) (*pb.NinshuReply, error) {
+	if list == nil {
+		log.Println("connecting to anchor...")
+		// default port 7946, bound to all interfaces
+		config := memberlist.DefaultLANConfig()
+		config.AdvertiseAddr = "0.0.0.0"
+		log.Printf("using %s\n", config.AdvertiseAddr)
+		mlist, err := memberlist.Create(config)
+		if err != nil {
+			log.Printf("failed to create memberlist: %v", err)
+			return &pb.NinshuReply{Success: false}, err
+		}
+		list = mlist
+		n, err := list.Join([]string{in.Ip})
+		if err != nil {
+			log.Printf("failed to connect to anchor: %v", err)
+			return &pb.NinshuReply{Success: false}, err
+		}
+		listAvailable = true
+		reply := fmt.Sprintf("%d nodes were contacted", n)
+		return &pb.NinshuReply{Success: true, Reply: &reply}, nil
+	} else {
+		return &pb.NinshuReply{Success: false}, nil
+	}
 }
 
 // This function handles SIGTERM and SIGQUIT signals to the
@@ -58,6 +120,12 @@ func sigTermHandler(signal os.Signal) error {
 	if signal == syscall.SIGQUIT {
 		<-done
 	}
+	if list != nil {
+		list.Leave(5 * time.Second)
+		if err := list.Shutdown(); err != nil {
+			log.Println("!!! failed to leave Ninshu network !!!")
+		}
+	}
 	return daemon.ErrStop
 }
 
@@ -65,7 +133,8 @@ func main() {
 	// Register Flags
 	signal := flag.String("s", "", signal_msg)
 	flag.Parse()
-	daemon.AddCommand(daemon.StringFlag(signal, "stop"), syscall.SIGTERM, sigTermHandler)
+	daemon.AddCommand(daemon.StringFlag(signal, "stop"), syscall.SIGQUIT, sigTermHandler)
+	daemon.AddCommand(daemon.StringFlag(signal, "force"), syscall.SIGTERM, sigTermHandler)
 	// Subtract umask from defaults 666 for files, 777 for folders
 	context := &daemon.Context{
 		PidFileName: pidFileName,

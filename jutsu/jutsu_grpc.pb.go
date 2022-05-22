@@ -20,6 +20,9 @@ const _ = grpc.SupportPackageIsVersion7
 type ClusterClient interface {
 	// Pings a node
 	PingNode(ctx context.Context, in *HelloRequest, opts ...grpc.CallOption) (*HelloReply, error)
+	DropAnchor(ctx context.Context, in *EmptyRequest, opts ...grpc.CallOption) (*NinshuReply, error)
+	RaiseAnchor(ctx context.Context, in *EmptyRequest, opts ...grpc.CallOption) (*NinshuReply, error)
+	ConnectTo(ctx context.Context, in *ConnectRequest, opts ...grpc.CallOption) (*NinshuReply, error)
 }
 
 type clusterClient struct {
@@ -39,12 +42,42 @@ func (c *clusterClient) PingNode(ctx context.Context, in *HelloRequest, opts ...
 	return out, nil
 }
 
+func (c *clusterClient) DropAnchor(ctx context.Context, in *EmptyRequest, opts ...grpc.CallOption) (*NinshuReply, error) {
+	out := new(NinshuReply)
+	err := c.cc.Invoke(ctx, "/jutsu.Cluster/DropAnchor", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clusterClient) RaiseAnchor(ctx context.Context, in *EmptyRequest, opts ...grpc.CallOption) (*NinshuReply, error) {
+	out := new(NinshuReply)
+	err := c.cc.Invoke(ctx, "/jutsu.Cluster/RaiseAnchor", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clusterClient) ConnectTo(ctx context.Context, in *ConnectRequest, opts ...grpc.CallOption) (*NinshuReply, error) {
+	out := new(NinshuReply)
+	err := c.cc.Invoke(ctx, "/jutsu.Cluster/ConnectTo", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ClusterServer is the server API for Cluster service.
 // All implementations must embed UnimplementedClusterServer
 // for forward compatibility
 type ClusterServer interface {
 	// Pings a node
 	PingNode(context.Context, *HelloRequest) (*HelloReply, error)
+	DropAnchor(context.Context, *EmptyRequest) (*NinshuReply, error)
+	RaiseAnchor(context.Context, *EmptyRequest) (*NinshuReply, error)
+	ConnectTo(context.Context, *ConnectRequest) (*NinshuReply, error)
 	mustEmbedUnimplementedClusterServer()
 }
 
@@ -54,6 +87,15 @@ type UnimplementedClusterServer struct {
 
 func (UnimplementedClusterServer) PingNode(context.Context, *HelloRequest) (*HelloReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method PingNode not implemented")
+}
+func (UnimplementedClusterServer) DropAnchor(context.Context, *EmptyRequest) (*NinshuReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DropAnchor not implemented")
+}
+func (UnimplementedClusterServer) RaiseAnchor(context.Context, *EmptyRequest) (*NinshuReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RaiseAnchor not implemented")
+}
+func (UnimplementedClusterServer) ConnectTo(context.Context, *ConnectRequest) (*NinshuReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ConnectTo not implemented")
 }
 func (UnimplementedClusterServer) mustEmbedUnimplementedClusterServer() {}
 
@@ -86,6 +128,60 @@ func _Cluster_PingNode_Handler(srv interface{}, ctx context.Context, dec func(in
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Cluster_DropAnchor_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(EmptyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClusterServer).DropAnchor(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/jutsu.Cluster/DropAnchor",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClusterServer).DropAnchor(ctx, req.(*EmptyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Cluster_RaiseAnchor_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(EmptyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClusterServer).RaiseAnchor(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/jutsu.Cluster/RaiseAnchor",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClusterServer).RaiseAnchor(ctx, req.(*EmptyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Cluster_ConnectTo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ConnectRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClusterServer).ConnectTo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/jutsu.Cluster/ConnectTo",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClusterServer).ConnectTo(ctx, req.(*ConnectRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Cluster_ServiceDesc is the grpc.ServiceDesc for Cluster service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -96,6 +192,18 @@ var Cluster_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "PingNode",
 			Handler:    _Cluster_PingNode_Handler,
+		},
+		{
+			MethodName: "DropAnchor",
+			Handler:    _Cluster_DropAnchor_Handler,
+		},
+		{
+			MethodName: "RaiseAnchor",
+			Handler:    _Cluster_RaiseAnchor_Handler,
+		},
+		{
+			MethodName: "ConnectTo",
+			Handler:    _Cluster_ConnectTo_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
