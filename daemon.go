@@ -85,6 +85,7 @@ func (s *clusterServices) ConnectTo(ctx context.Context, in *pb.ConnectRequest) 
 		log.Println("connecting to anchor...")
 		// default port 7946, bound to all interfaces
 		config := memberlist.DefaultLANConfig()
+		config.BindAddr = in.GetHostIP()
 		config.AdvertiseAddr = in.GetHostIP()
 		log.Printf("using %s\n", config.AdvertiseAddr)
 		mlist, err := memberlist.Create(config)
