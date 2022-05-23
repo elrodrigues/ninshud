@@ -11,6 +11,7 @@ service Cluster {
     rpc DropAnchor (ConnectRequest) returns (NinshuReply) {} // replace with anchor type
     rpc RaiseAnchor (EmptyRequest) returns (NinshuReply) {}
     rpc ConnectTo (ConnectRequest) returns (NinshuReply) {}
+    rpc GetMembers (EmptyRequest) returns (stream NinshuReply) {}
 }
 
 message EmptyRequest {}

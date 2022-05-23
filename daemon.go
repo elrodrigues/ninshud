@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -106,6 +107,22 @@ func (s *clusterServices) ConnectTo(ctx context.Context, in *pb.ConnectRequest) 
 		return &pb.NinshuReply{Success: true, Reply: &reply}, nil
 	} else {
 		return &pb.NinshuReply{Success: false}, nil
+	}
+}
+
+func (s *clusterServices) GetMembers(in *pb.EmptyRequest, stream pb.Cluster_GetMembersServer) error {
+	if list != nil {
+		log.Println("fetching memberlist...")
+		members := list.Members()
+		for _, m := range members {
+			reply := m.Name + " @ " + m.Address()
+			if err := stream.Send(&pb.NinshuReply{Success: true, Reply: &reply}); err != nil {
+				return err
+			}
+		}
+		return nil
+	} else {
+		return errors.New("Not connected to Ninshu network!")
 	}
 }
 

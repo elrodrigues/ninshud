@@ -23,6 +23,7 @@ type ClusterClient interface {
 	DropAnchor(ctx context.Context, in *ConnectRequest, opts ...grpc.CallOption) (*NinshuReply, error)
 	RaiseAnchor(ctx context.Context, in *EmptyRequest, opts ...grpc.CallOption) (*NinshuReply, error)
 	ConnectTo(ctx context.Context, in *ConnectRequest, opts ...grpc.CallOption) (*NinshuReply, error)
+	GetMembers(ctx context.Context, in *EmptyRequest, opts ...grpc.CallOption) (Cluster_GetMembersClient, error)
 }
 
 type clusterClient struct {
@@ -69,6 +70,38 @@ func (c *clusterClient) ConnectTo(ctx context.Context, in *ConnectRequest, opts 
 	return out, nil
 }
 
+func (c *clusterClient) GetMembers(ctx context.Context, in *EmptyRequest, opts ...grpc.CallOption) (Cluster_GetMembersClient, error) {
+	stream, err := c.cc.NewStream(ctx, &Cluster_ServiceDesc.Streams[0], "/jutsu.Cluster/GetMembers", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &clusterGetMembersClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type Cluster_GetMembersClient interface {
+	Recv() (*NinshuReply, error)
+	grpc.ClientStream
+}
+
+type clusterGetMembersClient struct {
+	grpc.ClientStream
+}
+
+func (x *clusterGetMembersClient) Recv() (*NinshuReply, error) {
+	m := new(NinshuReply)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // ClusterServer is the server API for Cluster service.
 // All implementations must embed UnimplementedClusterServer
 // for forward compatibility
@@ -78,6 +111,7 @@ type ClusterServer interface {
 	DropAnchor(context.Context, *ConnectRequest) (*NinshuReply, error)
 	RaiseAnchor(context.Context, *EmptyRequest) (*NinshuReply, error)
 	ConnectTo(context.Context, *ConnectRequest) (*NinshuReply, error)
+	GetMembers(*EmptyRequest, Cluster_GetMembersServer) error
 	mustEmbedUnimplementedClusterServer()
 }
 
@@ -96,6 +130,9 @@ func (UnimplementedClusterServer) RaiseAnchor(context.Context, *EmptyRequest) (*
 }
 func (UnimplementedClusterServer) ConnectTo(context.Context, *ConnectRequest) (*NinshuReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ConnectTo not implemented")
+}
+func (UnimplementedClusterServer) GetMembers(*EmptyRequest, Cluster_GetMembersServer) error {
+	return status.Errorf(codes.Unimplemented, "method GetMembers not implemented")
 }
 func (UnimplementedClusterServer) mustEmbedUnimplementedClusterServer() {}
 
@@ -182,6 +219,27 @@ func _Cluster_ConnectTo_Handler(srv interface{}, ctx context.Context, dec func(i
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Cluster_GetMembers_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(EmptyRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(ClusterServer).GetMembers(m, &clusterGetMembersServer{stream})
+}
+
+type Cluster_GetMembersServer interface {
+	Send(*NinshuReply) error
+	grpc.ServerStream
+}
+
+type clusterGetMembersServer struct {
+	grpc.ServerStream
+}
+
+func (x *clusterGetMembersServer) Send(m *NinshuReply) error {
+	return x.ServerStream.SendMsg(m)
+}
+
 // Cluster_ServiceDesc is the grpc.ServiceDesc for Cluster service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -206,6 +264,12 @@ var Cluster_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Cluster_ConnectTo_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "GetMembers",
+			Handler:       _Cluster_GetMembers_Handler,
+			ServerStreams: true,
+		},
+	},
 	Metadata: "jutsu/jutsu.proto",
 }
