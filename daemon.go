@@ -1,4 +1,4 @@
-package ninshud
+package main
 
 import (
 	"context"
