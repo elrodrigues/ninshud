@@ -30,5 +30,5 @@ message HelloReply {
 
 message ConnectRequest {
     string hostIP = 1;
-    optional string ip = 2;
+    string ip = 2;
 }

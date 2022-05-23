@@ -87,6 +87,8 @@ func (s *clusterServices) ConnectTo(ctx context.Context, in *pb.ConnectRequest) 
 		config := memberlist.DefaultLANConfig()
 		config.BindAddr = in.GetHostIP()
 		config.AdvertiseAddr = in.GetHostIP()
+		log.Printf("Host IP: %s\n", in.GetHostIP())
+		log.Printf("Target IP: %s\n", in.GetIp())
 		log.Printf("using %s\n", config.AdvertiseAddr)
 		mlist, err := memberlist.Create(config)
 		if err != nil {
